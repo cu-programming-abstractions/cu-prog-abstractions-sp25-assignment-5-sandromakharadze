@@ -1,41 +1,101 @@
 #include "LinearProbingHashTable.h"
 using namespace std;
 
-LinearProbingHashTable::LinearProbingHashTable(HashFunction<string> hashFn) {
-    /* TODO: Delete this comment and the next line, then implement this function. */
-    (void) hashFn;
+LinearProbingHashTable::LinearProbingHashTable(HashFunction<string> hashFn)
+    : hashFn(hashFn), capacity(hashFn.numSlots()){
+
+    elems = new Slot[capacity];
+
+    for (int i = 0; i < capacity; ++i) {
+        elems[i].type = SlotType::EMPTY;
+    }
+
+    numUsed = 0;
 }
 
 LinearProbingHashTable::~LinearProbingHashTable() {
-    /* TODO: Delete this comment, then implement this function. */
+    delete[] elems;
+    elems = nullptr;
 }
 
 int LinearProbingHashTable::size() const {
-    /* TODO: Delete this comment and the next lines, then implement this function. */
-    return -1;
+    return numUsed;
 }
 
 bool LinearProbingHashTable::isEmpty() const {
-    /* TODO: Delete this comment and the next lines, then implement this function. */
-    return false;
+    return numUsed == 0;
 }
 
 bool LinearProbingHashTable::insert(const string& elem) {
-    /* TODO: Delete this comment and the next lines, then implement this function. */
-    (void) elem;
+    if (numUsed == capacity){
+        return false;
+    }
+
+    int startIndex = hashFn(elem) % capacity;
+    int tombstoneIndex = -1;
+
+    for (int i = 0; i < capacity; i++) {
+        int idx = (startIndex + i) % capacity;
+        Slot& slot = elems[idx];
+
+        if (slot.type == SlotType::FILLED) {
+            if (slot.value == elem) return false; // duplicate
+        } else if (slot.type == SlotType::TOMBSTONE) {
+            if (tombstoneIndex == -1) tombstoneIndex = idx;
+        } else {
+            int insertPos = (tombstoneIndex != -1) ? tombstoneIndex : idx;
+            elems[insertPos].value = elem;
+            elems[insertPos].type = SlotType::FILLED;
+            numUsed++;
+            return true;
+        }
+    }
+
+    if (tombstoneIndex != -1) {
+        elems[tombstoneIndex].value = elem;
+        elems[tombstoneIndex].type = SlotType::FILLED;
+        numUsed++;
+        return true;
+    }
+
     return false;
 }
 
 bool LinearProbingHashTable::contains(const string& elem) const {
-    /* TODO: Delete this comment and the next lines, then implement this function. */
-    (void) elem;
-    return false;
+    int index = hashFn(elem) % capacity;
+    int startIndex = index;
+
+    while (true) {
+        if (elems[index].type == SlotType::EMPTY) {
+            return false;
+        } else if (elems[index].type == SlotType::FILLED && elems[index].value == elem) {
+            return true;
+        }
+        index = (index + 1) % capacity;
+        if (index == startIndex) {
+            return false;
+        }
+    }
 }
 
 bool LinearProbingHashTable::remove(const string& elem) {
-    /* TODO: Delete this comment and the next lines, then implement this function. */
-    (void) elem;
-    return false;
+    int index = hashFn(elem) % capacity;
+    int startIndex = index;
+
+    while (true) {
+        if (elems[index].type == SlotType::EMPTY) {
+            return false;
+        } else if (elems[index].type == SlotType::FILLED && elems[index].value == elem) {
+            elems[index].type = SlotType::TOMBSTONE;
+            numUsed--;
+            return true;
+        }
+
+        index = (index + 1) % capacity;
+        if (index == startIndex) {
+            return false;
+        }
+    }
 }
 
 
@@ -776,7 +836,7 @@ PROVIDED_TEST("Stress Test: Inserts/searches/deletes work in expected time O(1) 
 
 #include "filelib.h"
 PROVIDED_TEST("Stress test: Core functions do not cause stack overflows (should take at most 15 seconds)") {
-    SHOW_ERROR("Stress test is disabled by default. To run it, comment out line " + to_string(__LINE__) + " of " + getTail(__FILE__) + ".");
+    //SHOW_ERROR("Stress test is disabled by default. To run it, comment out line " + to_string(__LINE__) + " of " + getTail(__FILE__) + ".");
     const int kTableSize = 1000000;
 
     EXPECT_COMPLETES_IN(15,
@@ -812,7 +872,7 @@ PROVIDED_TEST("Stress test: Core functions do not cause stack overflows (should 
 
 #include <fstream>
 PROVIDED_TEST("Stress Test: Handles large workflows with little free space (should take at most fifteen seconds)") {
-    SHOW_ERROR("Stress test is disabled by default. To run it, comment out line " + to_string(__LINE__) + " of " + getTail(__FILE__) + ".");
+    //SHOW_ERROR("Stress test is disabled by default. To run it, comment out line " + to_string(__LINE__) + " of " + getTail(__FILE__) + ".");
 
     Vector<string> english;
     ifstream input("res/EnglishWords.txt");
